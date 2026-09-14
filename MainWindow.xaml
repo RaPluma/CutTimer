@@ -1,0 +1,611 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="CutTimer.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CutTimer"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    Title="CutTimer">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ============ 自定义标题栏 ============ -->
+        <Grid x:Name="TitleBar" Grid.Row="0" Height="46" Padding="14,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9"
+                        VerticalAlignment="Center">
+                <!-- 二次元角色头像 -->
+                <Border Width="26" Height="26" CornerRadius="13"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}">
+                    <Image Source="ms-appx:///Assets/mascot.png" Stretch="UniformToFill" />
+                </Border>
+                <TextBlock Text="CutTimer" FontSize="12.5" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 悬浮小窗开关（留出系统标题按钮的宽度） -->
+            <ToggleButton x:Name="MiniToggle" Grid.Column="1"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          Margin="0,0,150,0" Width="36" Height="30" Padding="0"
+                          Click="OnMiniToggleClick"
+                          ToolTipService.ToolTip="始终置顶的悬浮小窗">
+                <FontIcon Glyph="&#xE840;" FontSize="14" />
+            </ToggleButton>
+        </Grid>
+
+        <!-- ============ 导航 + 内容 ============ -->
+        <NavigationView x:Name="Nav" Grid.Row="1"
+                        PaneDisplayMode="LeftCompact"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        IsPaneToggleButtonVisible="False"
+                        OpenPaneLength="48"
+                        SelectionChanged="OnNavChanged">
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="计时" Tag="timer" IsSelected="True">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE916;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="统计" Tag="stats">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D2;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="设置" Tag="settings">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="关于" Tag="about">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE946;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <NavigationView.Content>
+                <Grid>
+                    <!-- == 计时页 == -->
+                    <ScrollViewer x:Name="PageTimer" Padding="16,6,20,18"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16">
+
+                            <!-- 两张卡片并排：左 = 当前卡计时，右 = 提醒倒计时 -->
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 主卡片：进度环 + 数据 -->
+                                <Border Grid.Column="0"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="20,18">
+                                    <Grid ColumnSpacing="22">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+    
+                                        <!-- 圆形进度环（参照 Win11 时钟的专注会话） -->
+                                        <Grid Grid.Column="0" Width="126" Height="126">
+                                            <muxc:ProgressRing x:Name="SessionRing"
+                                                               Width="126" Height="126"
+                                                               IsIndeterminate="False" Value="0"
+                                                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                                               Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                        Spacing="0">
+                                                <TextBlock x:Name="SessionText" Text="0:00"
+                                                           FontSize="23" FontFamily="等距更纱黑体 SC"
+                                                           FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                                <TextBlock Text="本次" FontSize="10" Opacity="0.5"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Grid>
+    
+                                        <StackPanel Grid.Column="1" Spacing="12" VerticalAlignment="Center">
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="当前卡" FontSize="11" Opacity="0.5" />
+                                                <TextBlock x:Name="CutNameText" Text="等待中…"
+                                                           FontSize="21" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+    
+                                            <Grid ColumnSpacing="20">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Spacing="1">
+                                                    <TextBlock Text="本卡累计" FontSize="10.5" Opacity="0.5" />
+                                                    <TextBlock x:Name="TotalText" Text="—"
+                                                               FontSize="16" FontFamily="等距更纱黑体 SC"
+                                                               Opacity="0.8" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="1">
+                                                    <TextBlock Text="其中你的" FontSize="10.5" Opacity="0.5" />
+                                                    <TextBlock x:Name="MineText" Text="0:00:00"
+                                                               FontSize="16" FontFamily="等距更纱黑体 SC"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                </StackPanel>
+                                            </Grid>
+    
+                                            <!-- 前台作画软件（带 CSP 图标） -->
+                                            <Border x:Name="AppChip" CornerRadius="6" Padding="8,5"
+                                                    HorizontalAlignment="Left"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1">
+                                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                                    <!-- 本机 CSP 的官方图标（版权属 CELSYS），
+                                                         不进仓库：由构建前的 tools/extract-csp-icon.ps1
+                                                         从已安装的 CSP 里提取。
+                                                         提取不到时会在代码里把这块收起来，只留文字。 -->
+                                                    <Image x:Name="AppIcon"
+                                                           Source="ms-appx:///Assets/csp.png"
+                                                           Width="17" Height="17"
+                                                           VerticalAlignment="Center" />
+                                                    <TextBlock x:Name="AppText" Text="未在作画"
+                                                               FontSize="11.5" VerticalAlignment="Center"
+                                                               Opacity="0.75" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 提醒卡片：倒计时圆环 + 开关 + 间隔 + 测试 -->
+                                <Border Grid.Column="1"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="16,14">
+                                    <Grid ColumnSpacing="14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 倒计时圆环（和悬浮小窗一样是自绘的：ProgressRing 描边太细） -->
+                                        <Grid Grid.Column="0" Width="104" Height="104"
+                                              VerticalAlignment="Center">
+                                            <Ellipse x:Name="CdTrack" Width="104" Height="104"
+                                                     StrokeThickness="7"
+                                                     Stroke="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                                            <Path x:Name="CdArc" StrokeThickness="7"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  Stroke="{ThemeResource AccentFillColorDefaultBrush}" />
+                                            <StackPanel VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center" Spacing="0">
+                                                <TextBlock x:Name="CdTime" Text="45:00"
+                                                           FontSize="18" FontFamily="等距更纱黑体 SC"
+                                                           FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock x:Name="CdCaption" Text="距下次"
+                                                           FontSize="9" Opacity="0.5"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Grid.Column="1" Spacing="8"
+                                                    VerticalAlignment="Center">
+                                            <Grid>
+                                                <TextBlock Text="起身提醒" FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
+                                                <!-- MinWidth=0 是必须的：ToggleSwitch 默认 MinWidth 154，
+                                                     在这张卡片里会溢出，右边被裁掉只剩左半个 -->
+                                                <muxc:ToggleSwitch x:Name="ReminderToggle"
+                                                                   MinWidth="0"
+                                                                   HorizontalAlignment="Right"
+                                                                   OnContent="" OffContent=""
+                                                                   Toggled="OnReminderToggled" />
+                                            </Grid>
+
+                                            <!-- 间隔：任意分钟数，不再限制成几个预设 -->
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="每隔" FontSize="12.5"
+                                                           VerticalAlignment="Center" />
+                                                <muxc:NumberBox x:Name="IntervalBox" Grid.Column="1"
+                                                                Minimum="5" Maximum="600"
+                                                                SmallChange="5" LargeChange="15"
+                                                                SpinButtonPlacementMode="Compact"
+                                                                HorizontalAlignment="Stretch"
+                                                                ValueChanged="OnIntervalChanged"
+                                                                KeyDown="OnIntervalKeyDown"
+                                                                ToolTipService.ToolTip="5 ~ 600 分钟" />
+                                                <TextBlock Grid.Column="2" Text="分钟" FontSize="12.5"
+                                                           VerticalAlignment="Center" Opacity="0.7" />
+                                            </Grid>
+
+                                            <!-- 快捷预设，省得每次都去点微调按钮 -->
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <Button Content="30" Tag="30" Click="OnPresetClick"
+                                                        MinWidth="0" MinHeight="0" Padding="10,3" FontSize="12"
+                                                        Style="{ThemeResource SubtleButtonStyle}" />
+                                                <Button Content="45" Tag="45" Click="OnPresetClick"
+                                                        MinWidth="0" MinHeight="0" Padding="10,3" FontSize="12"
+                                                        Style="{ThemeResource SubtleButtonStyle}" />
+                                                <Button Content="60" Tag="60" Click="OnPresetClick"
+                                                        MinWidth="0" MinHeight="0" Padding="10,3" FontSize="12"
+                                                        Style="{ThemeResource SubtleButtonStyle}" />
+                                                <Button Content="90" Tag="90" Click="OnPresetClick"
+                                                        MinWidth="0" MinHeight="0" Padding="10,3" FontSize="12"
+                                                        Style="{ThemeResource SubtleButtonStyle}" />
+                                                <TextBlock Text="分" FontSize="11" Opacity="0.45"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <Button x:Name="PauseReminderButton" Grid.Column="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        Click="OnPauseReminderClick"
+                                                        ToolTipService.ToolTip="暂停 / 继续倒计时">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <FontIcon x:Name="PauseIcon" Glyph="&#xE769;"
+                                                                  FontSize="12" />
+                                                        <TextBlock x:Name="PauseText" Text="暂停"
+                                                                   FontSize="12.5" />
+                                                    </StackPanel>
+                                                </Button>
+
+                                                <Button x:Name="ResetReminderButton" Grid.Column="1"
+                                                        HorizontalAlignment="Stretch"
+                                                        Click="OnResetReminderClick"
+                                                        Style="{ThemeResource SubtleButtonStyle}"
+                                                        ToolTipService.ToolTip="从现在重新计时（我刚休息过了）">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <FontIcon Glyph="&#xE72C;" FontSize="12" />
+                                                        <TextBlock Text="重置" FontSize="12.5" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                            </Grid>
+
+                            <!-- 状态行 -->
+                            <TextBlock x:Name="StatusText" FontSize="11" Opacity="0.5"
+                                       TextWrapping="Wrap" Margin="2,0" />
+
+                            <!-- 已登记的卡 -->
+                            <StackPanel Spacing="8">
+                                <Grid>
+                                    <TextBlock x:Name="ListHeader" Text="已登记的卡" FontSize="12"
+                                               FontWeight="SemiBold" Opacity="0.6"
+                                               VerticalAlignment="Center" />
+                                    <Button x:Name="AddCutButton" Content="手动添加"
+                                            HorizontalAlignment="Right" Click="OnAddClick"
+                                            Style="{ThemeResource SubtleButtonStyle}" />
+                                </Grid>
+
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" MinHeight="64">
+                                    <StackPanel>
+                                        <ListView x:Name="CutList" SelectionMode="Single"
+                                                  SelectionChanged="OnCutSelected"
+                                                  ContainerContentChanging="OnCutContainerChanging"
+                                                  ScrollViewer.HorizontalScrollMode="Disabled"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                  Background="Transparent" BorderThickness="0">
+                                            <!-- 新卡出现时滑入、删除时淡出，顺序变化时平移 -->
+                                            <ListView.ItemContainerTransitions>
+                                                <TransitionCollection>
+                                                    <AddDeleteThemeTransition />
+                                                    <RepositionThemeTransition />
+                                                    <ContentThemeTransition />
+                                                </TransitionCollection>
+                                            </ListView.ItemContainerTransitions>
+                                            <!-- 必须让行内容横向拉伸，否则长文本会把整页撑宽，
+                                                 右侧的「你的」会被挤出可视区 -->
+                                            <ListView.ItemContainerStyle>
+                                                <Style TargetType="ListViewItem">
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                    <Setter Property="Padding" Value="14,0" />
+                                                    <Setter Property="MinHeight" Value="0" />
+                                                </Style>
+                                            </ListView.ItemContainerStyle>
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="local:CutRow">
+                                                    <Grid Padding="2,9" ColumnSpacing="14">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0" Spacing="2">
+                                                            <TextBlock Text="{x:Bind Title, Mode=OneWay}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       FontSize="14" />
+                                                            <TextBlock Text="{x:Bind Detail, Mode=OneWay}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       FontSize="11" Opacity="0.5" />
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="你的"
+                                                                   FontSize="10.5" Opacity="0.5"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{x:Bind MineShort, Mode=OneWay}"
+                                                                   FontFamily="等距更纱黑体 SC" FontSize="14"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+
+                                        <TextBlock x:Name="NoCutText"
+                                                   Text="还没有登记的卡。&#x0a;保存一次（Ctrl+S）就会自动出现 —— 不扫描已有文件，只登记你实际画过的卡。"
+                                                   Margin="16,12" FontSize="12" Opacity="0.5"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- == 统计页 == -->
+                    <ScrollViewer x:Name="PageStats" Padding="16,6,20,18"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16">
+
+                            <StackPanel Spacing="8">
+                                <Grid>
+                                    <TextBlock Text="每日作画时间" FontSize="12" FontWeight="SemiBold"
+                                               Opacity="0.6" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="StatsRangeBox" HorizontalAlignment="Right"
+                                              Width="118" SelectionChanged="OnStatsRangeChanged">
+                                        <ComboBoxItem Content="近 7 天" Tag="7" />
+                                        <ComboBoxItem Content="近 14 天" Tag="14" IsSelected="True" />
+                                        <ComboBoxItem Content="近 30 天" Tag="30" />
+                                    </ComboBox>
+                                </Grid>
+
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="16,16,16,8">
+                                    <StackPanel Spacing="4">
+                                        <!-- 柱体：列由代码按天数生成，宽度用星号平分 -->
+                                        <Grid x:Name="BarHost" Height="156" />
+                                        <Border Height="1"
+                                                Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                                        <Grid x:Name="LabelHost" Height="16" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- 汇总 -->
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="今天" FontSize="11" Opacity="0.5" />
+                                        <TextBlock x:Name="StatToday" Text="—" FontSize="17"
+                                                   FontFamily="等距更纱黑体 SC" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="近 7 天" FontSize="11" Opacity="0.5" />
+                                        <TextBlock x:Name="Stat7" Text="—" FontSize="17"
+                                                   FontFamily="等距更纱黑体 SC" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="2"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="近 30 天" FontSize="11" Opacity="0.5" />
+                                        <TextBlock x:Name="Stat30" Text="—" FontSize="17"
+                                                   FontFamily="等距更纱黑体 SC" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <TextBlock Text="统计来自 events.jsonl：每保存一次结算一笔，时长记在「保存发生的那一天」。所以跨零点连续作画时，整段会算进保存那一刻所在的日子。"
+                                       FontSize="11" Opacity="0.45" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- == 设置页 == -->
+                    <ScrollViewer x:Name="PageSettings" Padding="16,6,20,18"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16">
+
+                            <TextBlock Text="提醒音效" FontSize="12" FontWeight="SemiBold"
+                                       Opacity="0.6" />
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="16,14">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:Name="SoundNameText" Text="默认铃声"
+                                                   FontSize="14" />
+                                        <TextBlock Text="提醒音会一直循环，直到你点通知、切回窗口或点「重置」。"
+                                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="试听" Click="OnPreviewSoundClick" />
+                                        <Button Content="选择文件…" Click="OnPickSoundClick" />
+                                        <Button Content="恢复默认" Click="OnResetSoundClick"
+                                                Style="{ThemeResource SubtleButtonStyle}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="支持 .wav（系统限制）。找个 wav 选进来即可，不用改程序。"
+                                               FontSize="11" Opacity="0.45" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="监视目录" FontSize="12" FontWeight="SemiBold"
+                                       Opacity="0.6" />
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8">
+                                <StackPanel>
+                                    <!-- 自动发现后可能有十几个目录，限高并内部滚动，
+                                         否则会把下面的「添加目录」顶到屏幕外 -->
+                                    <ScrollViewer MaxHeight="190"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollMode="Disabled"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl x:Name="RootList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="local:RootRow">
+                                                <Grid Padding="16,10" ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <FontIcon Grid.Column="0" Glyph="&#xE8B7;"
+                                                              FontSize="14" Opacity="0.7"
+                                                              VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{x:Bind Path}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center" FontSize="13" />
+                                                    <Button Grid.Column="2" Content="移除"
+                                                            Tag="{x:Bind Path}"
+                                                            Click="OnRemoveRootClick"
+                                                            Style="{ThemeResource SubtleButtonStyle}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <TextBlock x:Name="NoRootText"
+                                               Text="还没有监视目录。"
+                                               Margin="16,12" FontSize="12" Opacity="0.5" />
+
+                                    <Border BorderThickness="0,1,0,0"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button x:Name="AddRootButton" Content="添加目录"
+                                                    Click="OnAddRootClick" />
+                                            <Button x:Name="ScanRootsButton" Content="扫描磁盘…"
+                                                    Click="OnScanRootsClick"
+                                                    Style="{ThemeResource SubtleButtonStyle}"
+                                                    ToolTipService.ToolTip="遍历磁盘，找出含 .clip 的目录并加入监视。会持续几十秒，随时可继续用界面。" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <StackPanel x:Name="ScanPanel" Visibility="Collapsed"
+                                                Margin="16,0,16,12" Spacing="6">
+                                        <ProgressBar x:Name="ScanBar" IsIndeterminate="True"
+                                                     Height="3" CornerRadius="2" />
+                                        <TextBlock x:Name="ScanStatusText" FontSize="11"
+                                                   Opacity="0.6" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- == 关于页 == -->
+                    <ScrollViewer x:Name="PageAbout" Padding="16,6,20,18"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16">
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="22,24">
+                                <StackPanel Spacing="14" HorizontalAlignment="Center">
+                                    <Image Source="ms-appx:///Assets/mascot.png"
+                                           Width="128" Height="128" />
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="CutTimer" FontSize="20" FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center" />
+                                        <TextBlock Text="只记录你自己的作画时间"
+                                                   FontSize="12" Opacity="0.6"
+                                                   HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="1.0.0" FontSize="11" Opacity="0.4"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="18,16">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="工作原理" FontSize="13" FontWeight="SemiBold" />
+                                    <TextBlock FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                               Text="CSP 把作业时间记在每个 .clip 文件内部（内嵌 SQLite 的 Canvas.CanvasWorkTime）。这个值是所有人累加的，所以工具记录你首次看到文件时的值当基线，之后只累计增量 —— 上游那部分作为常量偏移自动抵消。" />
+                                    <TextBlock FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                               Text="CSP 只在保存时写盘，所以数据永远显示上一次保存时的值。" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="18,16">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="数据位置" FontSize="13" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="DataPathText" FontSize="11.5" Opacity="0.7"
+                                               FontFamily="等距更纱黑体 SC" TextWrapping="Wrap" />
+                                    <Button Content="打开数据目录" HorizontalAlignment="Left"
+                                            Click="OnFolderClick"
+                                            Style="{ThemeResource SubtleButtonStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </NavigationView.Content>
+        </NavigationView>
+    </Grid>
+</Window>

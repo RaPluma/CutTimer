@@ -1,0 +1,27 @@
+# 构建产物（release/ 是发布输出，155 MB，不进仓库）
+bin/
+obj/
+release/
+publish/
+*.pdb
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+
+# 本地日志与临时文件
+*.log
+_shot*.png
+_menu*.png
+
+# 打包出来的发行附件
+dist/
+*.zip
+
+# CLIP STUDIO PAINT 的官方图标（版权属 CELSYS），不进仓库。
+# 构建前由 tools/extract-csp-icon.ps1 从本机已装的 CSP 里提取。
+Assets/csp.png
