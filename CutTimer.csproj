@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>CutTimer</RootNamespace>
+    <AssemblyName>CutTimer</AssemblyName>
+    <!-- 版本号只在这一处维护：关于页从程序集读，发行包名也照它来 -->
+    <Version>1.0.1</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <!-- 不用 WinForms：UseWindowsForms 会导入 WindowsDesktop SDK 的 WPF XAML
+         编译器（MC6000），与 WinUI 的 XAML 编译冲突且压不住。
+         托盘图标改用纯 Win32 Shell_NotifyIcon（见 TrayIcon.cs）。 -->
+    <UseWindowsForms>false</UseWindowsForms>
+    <WindowsPackageType>None</WindowsPackageType>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- PublishSingleFile 需要它为 true 才能生成 resources.pri -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <!-- 用自定义 Main（Program.cs）以便先处理 probe 诊断参数 -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!-- 程序图标：任务栏/资源管理器里显示的 exe 图标。
+         托盘图标也是从这个 exe 里 ExtractIconW 取的，所以设这一处就都好了。 -->
+    <ApplicationIcon>Assets\CutTimer.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- 界面素材：CSP 图标 + 二次元角色 + 默认铃声，需随 exe 一起输出。
+       -preview.png 只是给人看的图标预览，不必进发布包。 -->
+  <ItemGroup>
+    <Content Include="Assets\**\*" Exclude="Assets\*-preview.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Assets\csp.png 是 CLIP STUDIO PAINT 的官方图标，版权属 CELSYS，
+       所以不进仓库（见 .gitignore）。改成构建前从本机装的 CSP 里提取：
+       源码仓库保持干净，而发出去的包里仍然带着它。
+       提取不到（本机没装 CSP）只提示一声，不当作构建失败 ——
+       程序在运行时会把这个图标位收起来，只显示文字。 -->
+  <Target Name="ExtractCspIcon" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <_CspIconPath>$(MSBuildProjectDirectory)\Assets\csp.png</_CspIconPath>
+    </PropertyGroup>
+    <Message Importance="high" Text="csp.png 已存在，跳过提取" Condition="Exists('$(_CspIconPath)')" />
+    <Exec Condition="!Exists('$(_CspIconPath)')"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\extract-csp-icon.ps1&quot;"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>
